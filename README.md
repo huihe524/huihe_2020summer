@@ -199,8 +199,8 @@ Class c8 = void.class; // void void
 Class<User> c = (Class<User>) Class.forName("com.huihe.entity.User");//获取Class对象
 String name = c.getName();//全限定类名
 String simpleName = c.getSimpleName();//类名
-Field username = c.getDeclaredField("username");//某个字段
-Field[] declaredFields = c.getDeclaredFields();//所有私有字段
+Field username = c.getDeclaredField("username");//某个字段 getField();
+Field[] declaredFields = c.getDeclaredFields();//所有字段 任何权限 不包含继承过来得
 Method getUsername = c.getDeclaredMethod("getUsername");//某个方法
 Method[] declaredMethods = c.getDeclaredMethods();//所有方法
 Constructor<User> declaredConstructor = c.getDeclaredConstructor();//某个构造
@@ -208,8 +208,8 @@ Constructor<?>[] declaredConstructors = c.getDeclaredConstructors();//所有构�
 User user = c.newInstance(); //通过Class调用无参构造生成对象
 User user1 = declaredConstructor.newInstance(); //通过无参构造器对象构造对象
 User user2 = (User) declaredConstructors[1].newInstance("1","2"); //通过全参构造器对象构造对象
-username.setAccessible(true); //跳过权限检测
-System.out.println(username.get(user2)); //调用属性对象的方法，查看在某个实体中的值
+username.setAccessible(true); //跳过权限检测 暴力反射
+System.out.println(username.get(user2)); //调用属性对象的方法，查看在某个实体中的值 user2.username
 System.out.println(getUsername.invoke(user2)); //方法对象的方法，激活某个实体的方法
 System.out.println(Arrays.toString(c.getAnnotations())); //查看类上的注解
 System.out.println(Arrays.toString(username.getAnnotations())); //查看属性上的注解
@@ -856,7 +856,7 @@ public class User {
 
     @Autowired //当属性required=false时，找不到也不会报错  先根据type 后根据id
     @Qualifier("dog") //指定具体名称
-    @Resource(name = "dog") //相当于@Autowired和@Qualifier的组合，默认是Autowired设置了name会按照名称，先name后type
+    @Resource(name = "dog") //相当于@Autowired和@Qualifier的组合，默认是Autowired     设置了name会按照名称，先name后type
     private Dog dog;
 
     @Override
@@ -988,6 +988,14 @@ ApplicationContext context = new AnnotationConfigApplicationContext(MyConfig.cla
 User user = (User) context.getBean("getUser");
 System.out.println(user);
 ```
+
+### 13.总结
+
+Xml配置概括：写起来比较灵活、修改方便，但是写和维护麻烦，关系一目了然，适用于任何场景。
+
+注解简单概括：写起来比较简单、方便，看起来也简洁，但是修改麻烦，不是自定义的类用不了。
+
+推荐使用xml配置bean,注解实现属性注入。
 
 # 3.Spring AOP
 
@@ -1333,3 +1341,12 @@ public class Log{
 ```
 
 ### 4.测试程序同上
+
+
+
+# 4.数据库与Javaweb基础
+
+到隔壁仓库看以前写的
+
+https://github.com/huihe524/2019JavaStudyCode/tree/master/huihe-groupOne-jdbc
+

@@ -2,7 +2,7 @@ package com.huihe;
 
 
 import com.huihe.annotation.MyAnnotation;
-import com.huihe.bean.User;
+import com.huihe.model.User;
 import org.junit.Test;
 
 import java.io.*;
@@ -11,13 +11,12 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.rmi.Remote;
 import java.util.Properties;
 
 public class Main {
 
     public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException, InstantiationException {
-        Class<?> c = Class.forName("com.huihe.bean.User");
+        Class<?> c = Class.forName("com.huihe.model.User");
 //        System.out.println(c.getSimpleName());
 //        System.out.println(c.getName());
         Field field = c.getDeclaredField("username");
@@ -46,8 +45,8 @@ public class Main {
         Class<User> c1 = User.class;
         User user = new User();
         Class<? extends User> c2 = user.getClass();
-        Class<?> c3 = Class.forName("com.huihe.bean.User");
-        Class<?> c4 = Class.forName("com.huihe.bean.User");
+        Class<?> c3 = Class.forName("com.huihe.model.User");
+        Class<?> c4 = Class.forName("com.huihe.model.User");
         System.out.println(c1);
         System.out.println(c2);
         System.out.println(c3);
@@ -77,7 +76,7 @@ public class Main {
 
     @Test
     public void test3() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-        Class<?> c = Class.forName("com.huihe.bean.User");
+        Class<?> c = Class.forName("com.huihe.model.User");
         Field[] fields = c.getDeclaredFields();
         Object instance = c.newInstance();
         for(Field field : fields){
