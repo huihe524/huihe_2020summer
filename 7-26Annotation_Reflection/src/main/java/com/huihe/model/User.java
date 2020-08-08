@@ -1,4 +1,4 @@
-package com.huihe.bean;
+package com.huihe.model;
 
 import com.huihe.annotation.MyAnnotation;
 
