@@ -1,5 +1,4 @@
-package com.huihe.handler;
-
+package com.huihe.handle;
 
 import com.huihe.service.UserService;
 
@@ -10,10 +9,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class ProxyHandler implements InvocationHandler {
+    private Object target;
+    private SimpleDateFormat sdf =new SimpleDateFormat("yyyy-MM-dd");
 
-    private Object object;
-    public ProxyHandler(Object object){
-        this.object = object;
+    public ProxyHandler(Object target){
+        this.target = target;
     }
 
     public Object getProxy(){
@@ -23,8 +23,12 @@ public class ProxyHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        System.out.println("[info] "+new SimpleDateFormat("yyyy-MM-dd").format(new Date()) +" 执行了"+method.getName()+"方法。");
-        Object result = method.invoke(object, args);
+        log(method.getName());
+        Object result = method.invoke(target, args);
         return result;
+    }
+
+    private void log(String method){
+        System.out.println("[Debug] "+sdf.format(new Date())+"执行了方法"+method);
     }
 }

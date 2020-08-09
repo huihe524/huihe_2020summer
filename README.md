@@ -1117,9 +1117,9 @@ public class Main {
 
 缺点：我们得为每一个服务都得创建代理类，工作量太大，不易管理。同时接口一旦发生改变，代理类也得相应修改。  
 
-### 2.动态代理
+### 2.jdk动态代理
 
-不需要手动的创建代理类，只需要编写一个动态处理器，真正的代理对象由JDK再运行时为我们动态的来创建。
+不需要手动的创建代理类，只需要编写一个动态处理器，真正的代理对象由JDK再运行时通过**反射**为我们动态的来创建。
 
 #### 1.接口
 
@@ -1168,7 +1168,100 @@ public class Main {
 
 #### 5.总结
 
-代理对象不需要实现接口,但是目标对象一定要实现接口,否则不能用动态代理
+优点：
+
+1.Java本身支持，不用担心依赖问题，随着版本稳定升级；
+
+2.代码实现简单；
+
+缺点：
+
+1.目标类必须实现某个接口，换言之，没有实现接口的类是不能生成代理对象的；
+
+2.代理的方法必须都声明在接口中，否则，无法代理；
+
+3.执行速度性能相对cglib较低；
+
+### 3.cglib动态代理
+
+CGLIB基于继承来实现代理，代理对象实际上是目标对象的子类，它内部通过第三方类库ASM，加载目标对象类的class文件，修改字节码来生成子类，生成类的过程较低效，但生成类以后的执行很高效，可以通过将ASM生成的类进行缓存来解决生成类过程低效的问题；
+
+导入cglib依赖
+
+```xml
+<dependency>
+    <groupId>cglib</groupId>
+    <artifactId>cglib</artifactId>
+    <version>3.2.4</version>
+</dependency>
+```
+
+#### 1.接口
+
+同静态代理
+
+#### 2.委托类
+
+同静态代理
+
+#### 3.动态处理器
+
+```java
+public class CglibProxyHandler implements MethodInterceptor {
+
+  @Override
+  public Object intercept(Object proxy, Method method, Object[] params, MethodProxy methodProxy)
+          throws Throwable {
+    System.out.println("执行前----");
+    Object result = methodProxy.invokeSuper(proxy, params);
+    System.out.println("执行后----");
+    return result;
+  }
+
+  public Object getProxy(Object target) {
+    Enhancer enhancer = new Enhancer();
+    enhancer.setSuperclass(target.getClass());
+    enhancer.setCallback(this);
+    enhancer.setClassLoader(target.getClass().getClassLoader());
+    return enhancer.create();
+  }
+
+}
+```
+
+#### 4.测试程序
+
+```java
+@Test
+public void test(){
+    UserServiceImpl service = new UserServiceImpl();
+    CglibProxyHandler handler = new CglibProxyHandler();
+    UserService proxy = (UserService) handler.getProxy(service);
+    proxy.delete();
+}
+```
+
+#### 5.总结
+
+Cglib原理：
+
+1.通过字节码增强技术动态的创建代理对象；
+
+2.代理的是代理对象的引用；
+
+Cglib优缺点：
+
+优点：
+
+1.代理的类无需实现接口；
+
+2.执行速度相对JDK动态代理较高；
+
+缺点： 
+
+1.字节码库需要进行更新以保证在新版java上能运行；
+
+2.动态创建代理对象的代价相对JDK动态代理较高；(创建代理速度慢)
 
 ## 2.AOP概念
 
@@ -1189,7 +1282,7 @@ AOP （Aspect Oriented Programming ）是一种编程思想，是面向对象编
 <dependency>
     <groupId>org.aspectj</groupId>
     <artifactId>aspectjweaver</artifactId>
-    <version>1.9.6</version>
+    <version>1.9.3</version>
 </dependency>
 ```
 
@@ -1308,14 +1401,33 @@ public class Log{
 ```java
 @Aspect //标识切面
 public class Log{
-    
-    @Before("execution(* com.huihe.service.impl.UserServiceImpl.*(..))")
+    @Pointcut("execution(* com.huihe.service.impl.UserServiceImpl.*(..))")
+    public void point(){}
+
+    @Before("point()")
     public void before(){
-        System.out.println("====方法执行前");
+        System.out.println("方法执行前");
     }
-    @After("execution(* com.huihe.service.impl.UserServiceImpl.*(..))")
+    @After("point()")
     public void after(){
-        System.out.println("方法执行后====");
+        System.out.println("方法执行最终");
+    }
+
+    @Around("point()")
+    public void around(ProceedingJoinPoint joinPoint) throws Throwable {
+        System.out.println("====方法执行前");
+        Object o = joinPoint.proceed();
+        System.out.println("====方法执行后");
+    }
+
+    @AfterReturning("point()")
+    public void afterReturning() throws Throwable {
+        System.out.println("方法执行后");
+    }
+
+    @AfterThrowing("point()")
+    public void afterThrowing(){
+        System.out.println("异常通知");
     }
 }
 ```
