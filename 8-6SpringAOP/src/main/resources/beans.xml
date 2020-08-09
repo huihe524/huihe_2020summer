@@ -6,20 +6,9 @@
         https://www.springframework.org/schema/beans/spring-beans.xsd
         http://www.springframework.org/schema/aop
         https://www.springframework.org/schema/aop/spring-aop.xsd">
-    <!--注册bean-->
     <bean id="userService" class="com.huihe.service.impl.UserServiceImpl"/>
-    <bean id="log" class="com.huihe.aop.Log"/>
+    <bean id="log" class="com.huihe.log.MyLog"/>
 
     <!--开启注解支持-->
     <aop:aspectj-autoproxy/>
-<!--&lt;!&ndash;配置aop&ndash;&gt;-->
-<!--    <aop:config>-->
-<!--        <aop:aspect ref="log">-->
-<!--            &lt;!&ndash;切入点&ndash;&gt;-->
-<!--            <aop:pointcut id="pointcut" expression="execution(* com.huihe.service.impl.UserServiceImpl.*(..))"/>-->
-<!--            &lt;!&ndash;通知&ndash;&gt;-->
-<!--            <aop:before method="before" pointcut-ref="pointcut"/>-->
-<!--            <aop:after method="after" pointcut-ref="pointcut"/>-->
-<!--        </aop:aspect>-->
-<!--    </aop:config>-->
 </beans>
