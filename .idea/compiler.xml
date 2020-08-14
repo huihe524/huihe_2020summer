@@ -8,6 +8,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="7-27Spring-IoC" />
         <module name="8-6SpringAOP" />
+        <module name="8-15Mysql" />
         <module name="annotation_reflection" />
       </profile>
     </annotationProcessing>

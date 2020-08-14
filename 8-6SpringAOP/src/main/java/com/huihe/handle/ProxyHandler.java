@@ -9,7 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class ProxyHandler implements InvocationHandler {
-    private Object target;
+    private final Object target;
     private SimpleDateFormat sdf =new SimpleDateFormat("yyyy-MM-dd");
 
     public ProxyHandler(Object target){

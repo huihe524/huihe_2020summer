@@ -1,7 +1,7 @@
 # huihe_2020summer
 2020假期spring、vue学习
 
-# 1、注解和反射
+# 1.注解和反射
 ## 1.注解
 
 Java 注解（Annotation）又称 Java 标注，是 JDK5.0 引入的一种注释机制。
@@ -1462,3 +1462,342 @@ public class Log{
 
 https://github.com/huihe524/2019JavaStudyCode/tree/master/huihe-groupOne-jdbc
 
+# 5.数据库
+
+## 1.事务
+
+https://www.runoob.com/mysql/mysql-transaction.html
+
+### jdbc测试事务--转账案例
+
+#### 1.新建表user
+
+```mysql
+CREATE TABLE `user` (
+  `name` varchar(20) DEFAULT NULL,
+  `money` int(10) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+insert into user values ("zs", 1000), ("ls", 1000);
+```
+
+#### 2.失败的情况
+
+```java
+Connection connection = JDBCUtils.getConnection();
+String sql1 = "update user set money=money-? where name=?";
+String sql2 = "update user set money=money+? where name=?";
+PreparedStatement ps1 = connection.prepareStatement(sql1),
+        ps2 = connection.prepareStatement(sql2);
+JDBCUtils.executeUpdate(ps1, new Object[]{100, "zs"});
+int a = 1/0;  //模拟出现异常
+JDBCUtils.executeUpdate(ps2, new Object[]{100, "ls"});
+JDBCUtils.closeResource(null, ps1, connection);
+JDBCUtils.closeResource(null, ps2, null);
+```
+
+#### 3.使用事务
+
+```java
+Connection connection = JDBCUtils.getConnection();
+connection.setAutoCommit(false);
+String sql1 = "update user set money=money-? where name=?";
+String sql2 = "update user set money=money+? where name=?";
+PreparedStatement ps1 = connection.prepareStatement(sql1),
+        ps2 = connection.prepareStatement(sql2);
+try {
+    JDBCUtils.executeUpdate(ps1, new Object[]{100, "zs"});
+    int a = 1/0;
+    JDBCUtils.executeUpdate(ps2, new Object[]{100, "ls"});
+    connection.commit();
+} catch (Exception e){
+    System.out.println("出现异常，回滚事务");
+    connection.rollback();
+} finally {
+    JDBCUtils.closeResource(null, ps1, connection);
+    JDBCUtils.closeResource(null, ps2, null);
+}
+```
+
+## 2.数据库连接池
+
+数据库连接池负责分配、管理和释放数据库连接，它允许应用程序重复使用一个现有的数据库连接，而不是再重新建立一个；释放空闲时间超过最大空闲时间的数据库连接来避免因为没有释放数据库连接而引起的数据库连接遗漏。这项技术能明显提高对数据库操作的性能。
+
+可以通过设置连接池的参数来控制连接池中的初始连接数、连接的上下限数以及每个连接的最大使用次数、最大空闲时间等等，也可以通过其自身的管理机制来监视数据库连接的数量、使用情况等。
+
+未使用连接池时：
+
+![](img/conn.png)
+
+使用连接池时：
+
+![](img/connpool.png)
+
+Java中开源的常用的数据库连接池有 DBCP、c3p0、Druid、HikariCP。
+
+### 1.druid连接池的使用
+
+#### 1.导入依赖
+
+```xml
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>8.0.20</version>
+</dependency>
+<dependency>
+    <groupId>com.alibaba</groupId>
+    <artifactId>druid</artifactId>
+    <version>1.1.9</version>
+</dependency>
+```
+
+#### 2.配置文件druid.properties
+
+```properties
+driver=com.mysql.cj.jdbc.Driver
+url=jdbc:mysql:///test?serverTimezone=UTC
+username=root
+password=123456
+#初始化连接数
+initialSize=5
+#最大连接数
+maxActive=10
+#最大等待时间
+maxWait=3000
+```
+
+#### 3.测试
+
+```java
+Properties properties = new Properties();
+properties.load(Main.class.getResourceAsStream("/druid.properties"));
+DataSource dataSource = DruidDataSourceFactory.createDataSource(properties);
+for (int i = 0; i < 10; i++){
+    Connection connection = dataSource.getConnection();
+    System.out.println(connection+"---"+i);
+}
+long start = System.currentTimeMillis();
+Connection connection = null;
+try {
+    connection = dataSource.getConnection();
+} catch (SQLException throwables) {
+    throwables.printStackTrace();
+}
+long end = System.currentTimeMillis();
+System.out.println(connection);
+System.out.println(end-start);
+```
+
+## 3.mybatis框架
+
+官网https://mybatis.org/mybatis-3/zh/index.html
+
+传统的JDBC(Java DataBase Connectivy)步骤：
+
+- 加载数据库驱动
+- 创建并获取数据库链接
+- 创建jdbc statement对象
+- 设置sql语句
+- 设置sql语句中的参数（使用preparedStatement）
+- 通过statement执行sql并获取结果
+- 对sql执行结果进行解析
+- 释放资源，包括resultSet、preparedStatement、connection
+
+Mybatis
+
+1、使用数据库连接池管理数据库连接
+
+2、将sql语句配置到xml配置文件中，即使sql语句变化，也不需要对java代码进行重新编译
+
+3、将sql语句及占位符和参数全部配置到xml中。
+
+4、将查询结果集，自动映射成java对象
+
+
+
+使用mybatis,以我们javaweb中的数据库操作为例
+
+### 1.使用xml文件
+
+#### 1.总配置mybatis-config.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <!-- 打印查询语句 -->
+        <setting name="logImpl" value="STDOUT_LOGGING" />
+    </settings>
+
+    <!-- 和Spring整合后environment配置都会被干掉 -->
+    <environments default="development">
+        <environment id="development">
+            <!-- 使用jdbc事务管理，目前由mybatis来管理 -->
+            <transactionManager type="JDBC" />
+            <!-- 数据库连接池，目前由mybatis来管理 -->
+            <dataSource type="POOLED"><!--有关于mysql数据库的各种信息-->
+                <property name="driver" value="com.mysql.cj.jdbc.Driver" />
+                <property name="url" value="jdbc:mysql://localhost:3306/mbook?serverTimezone=UTC" />
+                <property name="username" value="root" />
+                <property name="password" value="123456" />
+            </dataSource>
+        </environment>
+    </environments>
+
+    <mappers>
+        <!-- bookMapper.xml -->
+        <mapper resource="xml/bookMapper.xml" />
+    </mappers>
+</configuration>
+```
+
+#### 2.接口BookMapper
+
+```java
+public interface BookMapper {
+
+    List<Book> selectAll(); //查询全部
+
+    Book selectById(@Param("id")int id); //用编号查询
+
+    int deleteById(@Param("id")int id); //通过id删除
+
+    int addBook(Book book); //添加图书
+    
+    int updateById(Book book); //通过id更新
+}
+```
+
+#### 3.编写bookMapper.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.huihe.mapper.BookMapper">
+    <select id="selectAll" resultType="com.huihe.model.Book">
+        select * from book;
+    </select>
+    <select id="selectById" resultType="com.huihe.model.Book">
+        select * from book where bid=#{id}
+    </select>
+
+    <delete id="deleteById">
+        delete from book where bid=#{id}
+    </delete>
+
+    <insert id="addBook">
+        insert into book values (#{bid}, #{bname}, #{author}, #{category}, #{description});
+    </insert>
+
+    <update id="updateById">
+        update book set bname=#{bname}, author=#{author},
+         category= #{category}, description = #{description}
+         where bid=#{bid}
+    </update>
+</mapper>
+```
+
+#### 4.测试程序
+
+```java
+private BookMapper bookMapper;
+private InputStream inputStream;
+private SqlSession sqlSession;
+@Before
+public void before(){
+    //读取配置文件
+    inputStream = Main.class.getResourceAsStream("/mybatis-config.xml");
+    //创建SqlSessionFactory工厂类
+    SqlSessionFactoryBuilder builder = new SqlSessionFactoryBuilder();
+    SqlSessionFactory factory = builder.build(inputStream);
+    //使用工厂得到sqlSession对象
+    sqlSession = factory.openSession(true);
+    //使用sqlSession对象创建接口代理对象
+    bookMapper = sqlSession.getMapper(BookMapper.class);
+}
+
+@Test
+public void test(){
+    //使用代理对象操作数据库
+    List<Book> books = bookMapper.selectAll();
+    System.out.println(books);
+}
+
+@After
+public void after() throws IOException {
+    //释放资源
+    inputStream.close();
+    sqlSession.close();
+}
+```
+
+### 2.使用注解
+
+#### 1.总配置mybatis-config.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <!-- 打印查询语句 -->
+        <setting name="logImpl" value="STDOUT_LOGGING" />
+    </settings>
+
+    <!-- 和Spring整合后environment配置都会被干掉 -->
+    <environments default="development">
+        <environment id="development">
+            <!-- 使用jdbc事务管理，目前由mybatis来管理 -->
+            <transactionManager type="JDBC" />
+            <!-- 数据库连接池，目前由mybatis来管理 -->
+            <dataSource type="POOLED"><!--有关于mysql数据库的各种信息-->
+                <property name="driver" value="com.mysql.cj.jdbc.Driver" />
+                <property name="url" value="jdbc:mysql://localhost:3306/mbook?serverTimezone=UTC" />
+                <property name="username" value="root" />
+                <property name="password" value="123456" />
+            </dataSource>
+        </environment>
+    </environments>
+
+    <mappers>
+		<mapper class="com.huihe.mapper.BookMapper" />
+    </mappers>
+</configuration>
+```
+
+#### 2.接口BookMapper
+
+```java
+public interface BookMapper {
+
+    @Select("select * from book")
+    List<Book> selectAll(); //查询全部
+
+    @Select("select * from book where bid=#{id}")
+    Book selectById(@Param("id")int id); //用编号查询
+
+    @Delete("delete from book where bid=#{id}")
+    int deleteById(@Param("id")int id); //通过id删除
+
+    @Insert("insert into book values (#{bid}, #{bname}, #{author}, #{category}, #{description});")
+    int addBook(Book book); //添加图书
+
+    @Update("update book set bname=#{bname}, author=#{author},\n" +
+            "         category= #{category}, description = #{description}\n" +
+            "         where bid=#{bid}")
+    int updateById(Book book); //通过id更新
+}
+```
+
+#### 3.测试程序
+
+同上
+
+# 6.SpringMVC
