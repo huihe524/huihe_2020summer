@@ -2,21 +2,23 @@ package com.huihe;
 
 
 import com.huihe.annotation.MyAnnotation;
-import com.huihe.model.User;
+import com.huihe.book.model.User;
 import org.junit.Test;
 
 import java.io.*;
+import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Properties;
 
 public class Main {
 
     public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException, InstantiationException {
-        Class<?> c = Class.forName("com.huihe.model.User");
+        Class<?> c = Class.forName("com.huihe.book.model.User");
 //        System.out.println(c.getSimpleName());
 //        System.out.println(c.getName());
         Field field = c.getDeclaredField("username");
@@ -45,8 +47,8 @@ public class Main {
         Class<User> c1 = User.class;
         User user = new User();
         Class<? extends User> c2 = user.getClass();
-        Class<?> c3 = Class.forName("com.huihe.model.User");
-        Class<?> c4 = Class.forName("com.huihe.model.User");
+        Class<?> c3 = Class.forName("com.huihe.book.model.User");
+        Class<?> c4 = Class.forName("com.huihe.book.model.User");
         System.out.println(c1);
         System.out.println(c2);
         System.out.println(c3);
@@ -76,7 +78,7 @@ public class Main {
 
     @Test
     public void test3() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-        Class<?> c = Class.forName("com.huihe.model.User");
+        Class<?> c = Class.forName("com.huihe.book.model.User");
         Field[] fields = c.getDeclaredFields();
         Object instance = c.newInstance();
         for(Field field : fields){
@@ -118,4 +120,36 @@ public class Main {
         }
         System.out.println(instance);
     }
+
+    @Test
+    public void test6(){
+        Annotation[] annotations = Father.class.getAnnotations();
+        for(Annotation annotation : annotations){
+            System.out.println(annotation.annotationType());
+        }
+//        for(int i = 0; i < annotations.length; i++){
+//            System.out.println(annotations[i].annotationType());
+//        }
+        System.out.println("-----------");
+        Annotation[] annotations1 = Child.class.getAnnotations();
+        for(Annotation annotation : annotations1){
+            System.out.println(annotation.annotationType());
+        }
+//        System.out.println(Arrays.stream(annotations).
+//                anyMatch(annotation ->
+//                        annotation.annotationType().equals(MyAnnotation.class)));
+//        Annotation[] annotations1 = Child.class.getAnnotations();
+//        System.out.println(Arrays.stream(annotations1).
+//                anyMatch(annotation ->
+//                        annotation.annotationType().equals(MyAnnotation.class)));
+    }
+}
+
+@MyAnnotation("test")
+class Father{
+
+}
+
+class Child extends Father{
+
 }

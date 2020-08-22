@@ -1,5 +1,5 @@
 # huihe_2020summer
-2020假期spring、vue学习
+2020假期spring学习
 
 # 1.注解和反射
 ## 1.注解
@@ -26,7 +26,7 @@ Java 语言中的**类、方法、变量、参数和包**等都可以被标注�
 
 - @Target - 标记这个注解应该是哪种 Java 成员。
 
-- @Inherited - 标记这个注解是继承于哪个注解类(默认 注解并没有继承于任何子类)
+- @Inherited - 作用在类上时，会被子类继承此自定义的注解，其余情况都不会继承
 
 **从 Java 7 开始，额外添加了 3 个注解:**
 
@@ -1594,14 +1594,15 @@ System.out.println(end-start);
 
 传统的JDBC(Java DataBase Connectivy)步骤：
 
-- 加载数据库驱动
-- 创建并获取数据库链接
-- 创建jdbc statement对象
-- 设置sql语句
-- 设置sql语句中的参数（使用preparedStatement）
-- 通过statement执行sql并获取结果
-- 对sql执行结果进行解析
-- 释放资源，包括resultSet、preparedStatement、connection
+1. 导入依赖
+2. 加载数据库驱动
+3. 创建并获取数据库链接
+4. 创建jdbc statement对象
+5. 设置sql语句
+6. 设置sql语句中的参数（使用preparedStatement）
+7. 通过statement执行sql并获取结果
+8. 对sql执行结果进行解析
+9. 释放资源，包括resultSet、preparedStatement、connection
 
 Mybatis
 
@@ -1801,3 +1802,906 @@ public interface BookMapper {
 同上
 
 # 6.SpringMVC
+
+什么是MVC：  Model     view     Controller  
+
+​						   模型 	   视图		控制器
+
+(dao+model+service)    页面         
+
+![](./img/mvc.png)
+
+
+
+1. 用户发送请求至前端控制器DispatcherServlet
+2. DispatcherServlet收到请求调用HandlerMapping处理器映射器。
+3. 处理器映射器根据请求url找到具体的处理器，生成处理器对象及处理器拦截器(如果有则生成)一并返回给DispatcherServlet。
+4. DispatcherServlet通过HandlerAdapter处理器适配器调用处理器
+5. 执行处理器(Controller，也叫后端控制器)。
+6. Controller执行完成返回ModelAndView
+7. HandlerAdapter将controller执行结果ModelAndView返回给DispatcherServlet
+8. DispatcherServlet将ModelAndView传给ViewReslover视图解析器
+9. ViewReslover解析后返回具体View
+10. DispatcherServlet对View进行渲染视图（即将模型数据填充至视图中）。
+11. DispatcherServlet响应用户。
+
+
+
+引入jar包
+
+```xml
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-webmvc</artifactId>
+    <version>5.2.8.RELEASE</version>
+</dependency>
+```
+
+将依赖加入到war包的WEB-INF的lib下(自己创建lib目录)
+
+![](img/3.png)
+
+
+
+## 1.第一个MVC程序
+
+### 1.web.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+         version="4.0">
+    <!--  注册DispatcherServlet  -->
+    <servlet>
+        <servlet-name>springmvc</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <!--     
+            classpath：只会到你的class路径中查找找文件;
+            classpath*：不仅包含class路径，还包括jar文件中(class路径)进行查找      
+             -->
+            <param-value>classpath*:springmvc-servlet.xml</param-value>
+        </init-param>
+        <!--
+        1)load-on-startup 元素标记容器是否应该在启动的时候加载这个servlet，(实例化并调用其init()方法)。
+
+        2)它的值必须是一个整数，表示servlet应该被载入的顺序
+
+        3)如果该元素不存在或者这个数为负时，则容器会当该Servlet被请求时，再加载。
+
+        4)当值为0或者大于0时，表示容器在应用启动时就加载并初始化这个servlet；
+
+        5)正数的值越小，该servlet的优先级越高，应用启动时就越先加载。
+        -->
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>springmvc</servlet-name>
+        <!--
+         "/*"和"/"
+         "/*"会匹配一切请求
+         “/”不会匹配.jsp 因为servlet容器有内置的“*.jsp”匹配器，而扩展名匹配的优先级高于缺省匹配
+         -->
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+    <filter>
+        <filter-name>encoding</filter-name>
+        <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>utf-8</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>encoding</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+</web-app>
+```
+
+### 2.springmvc-servlet.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <!-- 处理映射器 -->
+    <bean class="org.springframework.web.servlet.handler.BeanNameUrlHandlerMapping"/>
+    <!-- 处理器适配器 -->
+    <bean class="org.springframework.web.servlet.mvc.SimpleControllerHandlerAdapter"/>
+    <!-- 视图解析器 -->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/page/"/>
+        <property name="suffix" value=".jsp"/>
+    </bean>
+    <bean id="/hello" class="com.huihe.book.controller.HelloController"/>
+</beans>
+```
+
+### 3.HelloController
+
+```java
+public class HelloController implements Controller {
+
+    @Override
+    public ModelAndView handleRequest(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        ModelAndView modelAndView = new ModelAndView();
+        modelAndView.setViewName("index");
+        modelAndView.addObject("msg", "你好");
+        return modelAndView;
+    }
+}
+```
+
+### 4.index.jsp
+
+```jsp
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+  <head>
+    <title>测试</title>
+  </head>
+  <body>
+      <h1>${msg}</h1>
+  </body>
+</html>
+```
+
+## 2.注解版
+
+### 1.web.xml
+
+同上
+
+### 2.springmvc-servlet
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/mvc
+       http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+    <!--  自动扫描包，指定得包及其子包可以被扫描到  -->
+    <context:component-scan base-package="com.huihe"/>
+    <!--  让springmvc不处理静态资源 .css .js .mp4 -->
+    <mvc:default-servlet-handler/>
+     <!--  支持mvc注解驱动
+      要使用@RequestMapping注解来完成映射关系
+      需要在上下文中注册DefaultAnnotationHandlerMapping
+      和AnnotationMethodHandlerAdapter实例
+        分别处理类上及方法上
+      -->
+    <mvc:annotation-driven/>
+    <!-- 视图解析器 -->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/page/"/>
+        <property name="suffix" value=".jsp"/>
+    </bean>
+</beans>
+```
+
+### 3.TestController
+
+```java
+@Controller
+public class TestController {
+    @RequestMapping(value = "/test", method = RequestMethod.GET)
+    public String test(Model model){
+        model.addAttribute("msg", "Hello World");
+        System.out.println("Hello World");
+        return "index";
+    }
+
+    @PostMapping("/test1")
+    public String test1(Model model){
+        model.addAttribute("msg", "Hello World");
+        System.out.println("Hello World");
+        return "index";
+    }
+    
+    @GetMapping
+    @ResponseBody
+    public String test2(){
+        return "Hello World!";
+    }
+    
+    @GetMapping("/test/{id}")
+    @ResponseBody
+    public void test3(@PathVariable("id") String id, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        response.setHeader("a", "b");
+//        response.sendRedirect("/test");
+        request.getRequestDispatcher("/test").forward(request, response);
+        System.out.println(id);
+//        return "Hello World!";
+    }
+    
+    @GetMapping("/test4")
+    public String test4(){
+        return "redirect:test";
+    }
+    
+    @GetMapping("/test5")
+    public String test5(){
+        return "foward:test";
+    }
+}
+```
+
+### 4.index.jsp
+
+同上
+
+3.修改
+
+## 3.ssm_book
+
+工程目录概览：
+
+<img src="img/5.png" style="zoom:80%;" />
+
+### 1.pom依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-webmvc</artifactId>
+    <version>5.2.8.RELEASE</version>
+</dependency>
+<dependency>
+    <groupId>javax.servlet</groupId>
+    <artifactId>servlet-api</artifactId>
+    <version>2.5</version>
+</dependency>
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>8.0.20</version>
+</dependency>
+<dependency>
+    <groupId>com.alibaba</groupId>
+    <artifactId>druid</artifactId>
+    <version>1.1.20</version>
+</dependency>
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.4</version>
+</dependency>
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis-spring</artifactId>
+    <version>2.0.4</version>
+</dependency>
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-jdbc</artifactId>
+    <version>5.2.6.RELEASE</version>
+</dependency>
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-core</artifactId>
+    <version>2.11.1</version>
+</dependency>
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-annotations</artifactId>
+    <version>2.11.1</version>
+</dependency>
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.11.1</version>
+</dependency>
+```
+
+### 2.导入jar包给artifact
+
+![](img/4.png)
+
+### 3.web.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+         version="4.0">
+
+    <servlet>
+        <servlet-name>dispatcherServlet</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:applicationContext.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>dispatcherServlet</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+    <filter>
+        <filter-name>coding</filter-name>
+        <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>utf-8</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>coding</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <filter>
+        <filter-name>HttpMethodFilter</filter-name>
+        <filter-class>org.springframework.web.filter.HttpPutFormContentFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>HttpMethodFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+</web-app>
+```
+
+### 4.实体类book
+
+```java
+public class Book {
+    Integer bid;
+    String bname;
+    String author;
+    String category;
+    String description;
+
+    public Book() {
+    }
+
+    public Book(Integer bid, String bname, String author, String category, String description) {
+        this.bid = bid;
+        this.bname = bname;
+        this.author = author;
+        this.category = category;
+        this.description = description;
+    }
+
+    public Integer getBid() {
+        return bid;
+    }
+
+    public void setBid(Integer bid) {
+        this.bid = bid;
+    }
+
+    public String getBname() {
+        return bname;
+    }
+
+    public void setBname(String bname) {
+        this.bname = bname;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    @Override
+    public String toString() {
+        return "Book{" +
+                "bid=" + bid +
+                ", bname='" + bname + '\'' +
+                ", author='" + author + '\'' +
+                ", category='" + category + '\'' +
+                ", description='" + description + '\'' +
+                '}';
+    }
+}
+```
+
+### 5.数据库配置-dao层
+
+#### 1.mybatis-config.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+    <mappers>
+        <mapper resource="xml/bookMapper.xml" />
+    </mappers>
+</configuration>
+```
+
+#### 2.bookMapper接口与bookMapper.xml
+
+```java
+public interface BookMapper {
+
+    List<Book> selectAll(); //查询全部
+
+    Book selectById(@Param("id")int id); //用编号查询
+
+    int deleteById(@Param("id")int id); //通过id删除
+
+    int addBook(Book book); //添加图书
+
+    int updateById(Book book); //通过id更新
+}
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.huihe.book.mapper.BookMapper">
+    <select id="selectAll" resultType="com.huihe.book.model.Book">
+        select * from book;
+    </select>
+    <select id="selectById" resultType="com.huihe.book.model.Book">
+        select * from book where bid=#{id}
+    </select>
+
+    <delete id="deleteById">
+        delete from book where bid=#{id}
+    </delete>
+
+    <insert id="addBook">
+        insert into book values (#{bid}, #{bname}, #{author}, #{category}, #{description});
+    </insert>
+
+    <update id="updateById">
+        update book set bname=#{bname}, author=#{author},
+         category= #{category}, description = #{description}
+         where bid=#{bid}
+    </update>
+</mapper>
+```
+
+#### 3.jdbc.properties
+
+```properties
+jdbc.driver=com.mysql.cj.jdbc.Driver
+#如果使用mysql8+ 使用时区
+jdbc.url=jdbc:mysql://127.0.0.1:3306/mbook?serverTimezone=UTC&characterEncoding=UTF-8
+jdbc.username=root
+jdbc.password=123456
+```
+
+#### 4.spring集成mybatis   spring-dao.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd">
+        <!--1.关联数据库配置文件-->
+        <context:property-placeholder location="classpath:jdbc.properties"/>
+
+        <!-- 2.数据库连接池Druid -->
+        <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+                <property name="driverClassName" value="${jdbc.driver}"/>
+                <property name="url" value="${jdbc.url}"/>
+                <property name="username" value="${jdbc.username}"/>
+                <property name="password" value="${jdbc.password}"/>
+        </bean>
+        <!-- 3.sqlSessionFactory -->
+        <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="configLocation" value="classpath:mybatis-config.xml"/>
+        </bean>
+
+        <!-- 4.配置dao接口扫描包，动态实现接口到ioc容器 -->
+        <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+                <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+                <!-- 要扫描的dao包 -->
+                <property name="basePackage" value="com.huihe.book.mapper"/>
+        </bean>
+</beans>
+```
+
+### 6.业务-service层  
+
+#### 1.接口与实现
+
+```java
+public interface BookService {
+    List<Book> selectAll(); //查询全部
+
+    Book selectById(int id); //用编号查询
+
+    int deleteById(int id); //通过id删除
+
+    int addBook(Book book); //添加图书
+
+    int updateById(Book book); //通过id更新
+}
+```
+
+```java
+@Service
+public class BookServiceImpl implements BookService {
+
+    @Autowired
+    private BookMapper bookMapper;
+
+    @Override
+    public List<Book> selectAll() {
+        return bookMapper.selectAll();
+    }
+
+    @Override
+    public Book selectById(int id) {
+        return bookMapper.selectById(id);
+    }
+
+    @Override
+    public int deleteById(int id) {
+        return bookMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public int addBook(Book book) {
+//               bookMapper.addBook(book);
+//               int a = 1/0;
+        return bookMapper.addBook(book);
+    }
+
+    @Override
+    public int updateById(Book book) {
+        return bookMapper.updateById(book);
+    }
+
+}
+```
+
+#### 2.spring配置service  spring-service.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx.xsd">
+    <!--  自动扫描包，指定得包及其子包可以被扫描到  -->
+    <context:component-scan base-package="com.huihe.book.service"/>
+
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+    <!-- 开启事务控制的注解支持 -->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+</beans>
+```
+
+### 7.控制 controller层
+
+#### 1.bookController
+
+```java
+@RestController
+@RequestMapping("/manager")
+public class BookController {
+
+    @Autowired
+    private BookService bookService;
+
+    @GetMapping("{id}")
+    public Book getById(@PathVariable Integer id){
+        return bookService.selectById(id);
+    }
+    @GetMapping
+    public List<Book> getAll(){
+        return bookService.selectAll();
+    }
+
+    @DeleteMapping("/{id}")
+    public boolean deleteById(@PathVariable Integer id){
+        return bookService.deleteById(id)>0;
+    }
+
+    @PostMapping
+    public void updateById(Book book, HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        bookService.updateById(book);
+        request.getRequestDispatcher("/").forward(request, response);
+    }
+
+    @PutMapping("/add")
+    public void addBook(Book book){
+        System.out.println(book);
+        bookService.addBook(book);
+    }
+}
+```
+
+#### 2.spring配置controller  spring-mvc.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/mvc
+       http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+    <context:component-scan base-package="com.huihe.book.controller"/>
+
+<!--      让springmvc不处理静态资源 .css .js .mp4... -->
+    <mvc:default-servlet-handler/>
+
+    <mvc:annotation-driven/>
+
+</beans>
+```
+
+### 8.applicationContext.xml引入配置
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <import resource="spring-dao.xml"/>
+    <import resource="spring-service.xml"/>
+    <import resource="spring-mvc.xml"/>
+</beans>
+```
+
+### 9.前端页面
+
+先导入jquery库
+
+#### 1.index.html
+
+```html
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <title>图书管理系统</title>
+    <style>
+        table {
+            border-collapse: separate;
+            border-spacing: 5px;
+            table-layout: fixed;
+        }
+
+        table td {
+            width: 150px;
+            height: 50px;
+            text-align: center;
+            background-color: honeydew;
+        }
+    </style>
+</head>
+<body style="text-align: center">
+<div style="width: 50%; margin: 100px auto 0">
+    <div>
+        <table cellpadding="1" cellspacing="1">
+            <caption align="top">图书管理系统<a href="/book/page/addBook.html">添加图书</a></caption>
+            <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>名称</th>
+                    <th>作者</th>
+                    <th>分类</th>
+                    <th>描述</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="mainContent">
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+<script src="js/jquery-1.8.3.min.js"></script>
+<script>
+    $(window).load(()=>{
+        $.ajax({
+            url: "/book/manager",
+            type: "get",
+            success: function(books) {
+                let html = '';
+                for (let i = 0; i < books.length; i++){
+                    html+="<tr><td>"+books[i].bid+"</td><td>"+books[i].bname+"</td><td>"+books[i].author+"</td>\n" +
+                        "<td>"+books[i].category+"</td>\n" +
+                        "<td>"+books[i].description+"</td><td><a href=\"/book/page/editBook.html?bid="+books[i].bid+
+                        "\">修改</a>|<a href='#' onclick=deleteById("+books[i].bid+")>删除</a></td></tr>"
+                }
+                $('#mainContent').html(html);
+            }
+        });
+    })
+    function deleteById(id) {
+        $.ajax({
+            url: "/book/manager/"+id,
+            type: "delete",
+            success: function(flag) {
+                if(flag) location.reload();
+            }
+        })
+    }
+</script>
+</html>
+```
+
+#### 2.addBook.html
+
+```html
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>图书管理系统-添加图书</title>
+</head>
+<body>
+<div style="width:500px; margin: 150px auto 0">
+    <div>添加图书</div>
+    <form id="addForm">
+        名称：<input type="text" name="bname"><br>
+        作者：<input type="text" name="author"><br>
+        分类：<input type="text" name="category"><br>
+        描述：<input type="text" name="description"><br>
+        <input type="button" value="提交" onclick="add()">
+    </form>
+</div>
+<script src="../js/jquery-1.8.3.min.js"></script>
+<script>
+    function add() {
+        console.log($("#addForm").serialize());
+        $.ajax({
+            url:'/book/manager/add',
+            type:'put',
+            data:$("#addForm").serialize(),
+            success:()=>{
+                location.replace("/book");
+            }
+        })
+    }
+</script>
+</body>
+</html>
+```
+
+#### 3.editBook.html
+
+```html
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>图书管理系统-修改图书</title>
+</head>
+<script src="../js/jquery-1.8.3.min.js"></script>
+<body>
+<div style="width:500px; margin: 150px auto 0">
+    <div>修改图书</div>
+    <form id="form" action="/book/manager" method="post">
+        <input type="hidden" name="bid" value="">
+        名称：<input type="text" name="bname" value=""><br>
+        作者：<input type="text" name="author" value=""><br>
+        分类：<input type="text" name="category" value=""><br>
+        描述：<input type="text" name="description" value=""><br>
+        <input type="submit" value="提交"/>
+    </form>
+</div>
+</body>
+<script>
+    //获取url中的参数
+    function getUrlParam(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+        var r = window.location.search.substr(1).match(reg); //匹配目标参数
+        if (r != null) return unescape(r[2]); return null; //返回参数值
+    }
+    $(window).load(()=>{
+        $.ajax({
+            url: "/book/manager/"+getUrlParam("bid"),
+            type: "get",
+            success: function(book) {
+                // console.log(data);
+                // let book = JSON.parse(data);
+                let inputs = document.getElementsByTagName("input");
+                inputs[0].value = book.bid;
+                inputs[1].value = book.bname;
+                inputs[2].value = book.author;
+                inputs[3].value = book.category;
+                inputs[4].value = book.description;
+            }
+        });
+    })
+</script>
+</html>
+```
+
+# 7.结语
+
+东西是不少，但是很多只讲了一丢丢。
+
+比如    aop的具体用途,像声明式事务
+
+tomcat的一些具体配置
+
+web的Seesion、Cookie用法、监听器
+
+mybaits的动态Sql，一、二级缓存，一对一、一对多（多对一）、多对多关系、日志
+
+js语法和jquery库的使用
+
+
+
+但是问题不大，能把这个book例子对着文档写出来，也可以做一些简单的web应用了
+
+而且最后这个图书管理其实是前后端分离的，你的前后端代码完全可以单独开发，测试。
+
+后端开发就算测试下接口返回数据是否正常，前端就弄个测试接口就行。
+
+
+
+而且我们后面这种后台，用springboot就可以了，你们也体验过了，导入依赖，
+
+直接一个application.properties/.yml配置文件，然后注解开发就Ok了
+
+
+
+我们讲的这些东西都是挺简单的，你们可以把具体细节和一些进阶的东西继续看看
+
+再后面的东西那些springboot整合的优秀框架，用起来挺简单的，主要理解运行机制吧。
+
+真正重要的东西还是基础，像语法基础、jvm、多线程、数据结构与算法、
+
+设计模式、计算机网络、操作系统、数据库。
+

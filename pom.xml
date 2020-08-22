@@ -19,6 +19,8 @@
         <module>7-27Spring-IoC</module>
         <module>8-6SpringAOP</module>
         <module>8-15Mysql</module>
+        <module>spring-mvc</module>
+        <module>ssm_book</module>
     </modules>
     <dependencies>
         <dependency>
