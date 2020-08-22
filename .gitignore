@@ -2,3 +2,5 @@
 /7-26Annotation_Reflection/target/
 /.idea/
 *.iml
+out/
+*/target/

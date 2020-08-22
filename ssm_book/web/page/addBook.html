@@ -1,0 +1,33 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>图书管理系统-添加图书</title>
+</head>
+<body>
+<div style="width:500px; margin: 150px auto 0">
+    <div>添加图书</div>
+    <form id="addForm">
+        名称：<input type="text" name="bname"><br>
+        作者：<input type="text" name="author"><br>
+        分类：<input type="text" name="category"><br>
+        描述：<input type="text" name="description"><br>
+        <input type="button" value="提交" onclick="add()">
+    </form>
+</div>
+<script src="../js/jquery-1.8.3.min.js"></script>
+<script>
+    function add() {
+        console.log($("#addForm").serialize());
+        $.ajax({
+            url:'/book/manager/add',
+            type:'put',
+            data:$("#addForm").serialize(),
+            success:()=>{
+                location.replace("/book");
+            }
+        })
+    }
+</script>
+</body>
+</html>
